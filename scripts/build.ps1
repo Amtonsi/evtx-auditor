@@ -8,7 +8,7 @@ if (-not (Test-Path -LiteralPath $Python)) {
 }
 
 $TempRoot = Join-Path $Root 'work\temp'
-$PytestTemp = Join-Path $Root 'work\pytest-tmp'
+$PytestTemp = Join-Path $TempRoot ("pytest-tmp-{0:yyyyMMddHHmmss}-{1}" -f (Get-Date), $PID)
 New-Item -ItemType Directory -Force -Path $TempRoot | Out-Null
 
 $env:TEMP = $TempRoot

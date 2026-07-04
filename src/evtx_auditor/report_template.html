@@ -124,6 +124,7 @@
     .empty { padding: 28px; color: var(--ok); text-align: center; font-weight: 700; }
     .hidden { display: none !important; }
     footer { margin-top: 28px; padding-top: 16px; border-top: 1px solid var(--line); color: #79869a; font-size: 10px; line-height: 1.6; }
+    .developer-credit { margin-top: 8px; color: var(--ink); font-weight: 800; }
     @media (max-width: 1050px) {
       .metrics { grid-template-columns: repeat(3, 1fr); }
       .facts { grid-template-columns: repeat(2, 1fr); }
@@ -219,7 +220,10 @@
         </div>
         <div class="panel"><div id="quality-grid" class="diagnostics"></div></div>
       </section>
-      <footer id="footer"></footer>
+      <footer>
+        <div id="footer-note"></div>
+        <div class="developer-credit">Разработал: Абдрахманов Амаль Даулетович</div>
+      </footer>
     </main>
   </div>
   <script id="report-data" type="application/json">__REPORT_DATA__</script>
@@ -455,7 +459,7 @@
       byId("channel").addEventListener("change", applyFilters);
       applyFilters();
 
-      byId("footer").textContent =
+      byId("footer-note").textContent =
         "Отчёт автономный: данные, стили и фильтры находятся в одном HTML-файле. " +
         "Исходные архивы не изменялись. Отсутствие находок не означает отсутствие данных, если узел отмечен как неполный.";
     })();

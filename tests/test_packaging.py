@@ -14,6 +14,8 @@ def test_packaging_files_define_verified_windowed_build():
     assert "python -m pytest" not in build
     assert "-m pytest" in build
     assert "--basetemp" in build
+    assert "pytest-tmp-" in build
+    assert "$PID" in build
     assert "$env:TEMP" in build
     assert "$env:TMP" in build
     assert "--self-test" in build

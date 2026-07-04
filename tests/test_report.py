@@ -13,6 +13,7 @@ def test_report_is_offline_and_contains_each_node(sample_audit_run):
     assert "Диагностика обработки" in html
     assert "fetch(" not in html
     assert "Групповой образец" in html
+    assert "Разработал: Абдрахманов Амаль Даулетович" in html
 
 
 def test_report_escapes_event_content(sample_audit_run_with_script_text):

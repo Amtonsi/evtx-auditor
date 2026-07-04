@@ -16,9 +16,16 @@ from .models import (
     EventRecord,
     NodeResult,
 )
-from .parser import EventContext, ParseIssue, iter_evtx
+from .parser import (
+    EventContext,
+    FastEventMetadata,
+    ParseIssue,
+    ScannedRecord,
+    iter_evtx,
+    scan_evtx,
+)
 from .report import render_report
-from .rules import is_candidate_event
+from .rules import is_candidate_event, is_candidate_metadata
 
 
 @dataclass(frozen=True)
@@ -38,6 +45,15 @@ EventReader = Callable[
     [Path, EventContext, Callable[[ParseIssue], None] | None],
     Iterator[EventRecord],
 ]
+RecordScanner = Callable[
+    [
+        Path,
+        EventContext,
+        Callable[[int, int | None], bool],
+        Callable[[ParseIssue], None] | None,
+    ],
+    Iterator[ScannedRecord],
+]
 
 
 class AuditCoordinator:
@@ -45,11 +61,13 @@ class AuditCoordinator:
         self,
         progress: Callable[[ProgressUpdate], None] | None = None,
         message: Callable[[Diagnostic], None] | None = None,
-        event_reader: EventReader = iter_evtx,
+        event_reader: EventReader | None = None,
+        record_scanner: RecordScanner = scan_evtx,
     ) -> None:
         self.progress = progress or (lambda update: None)
         self.message = message or (lambda diagnostic: None)
         self.event_reader = event_reader
+        self.record_scanner = record_scanner
 
     @staticmethod
     def _check_cancelled(cancelled: Event) -> None:
@@ -139,20 +157,45 @@ class AuditCoordinator:
                         log_file=log_path.name,
                     )
                     try:
-                        for event in self.event_reader(
-                            log_path, context, on_issue
-                        ):
+                        if self.event_reader is not None:
+                            scanned_records = (
+                                ScannedRecord(
+                                    FastEventMetadata(
+                                        event.event_id,
+                                        event.level,
+                                        event.timestamp,
+                                    ),
+                                    event
+                                    if is_candidate_event(event)
+                                    else None,
+                                )
+                                for event in self.event_reader(
+                                    log_path, context, on_issue
+                                )
+                            )
+                        else:
+                            scanned_records = self.record_scanner(
+                                log_path,
+                                context,
+                                is_candidate_metadata,
+                                on_issue,
+                            )
+                        for scanned in scanned_records:
                             records_read += 1
                             if records_read % 500 == 0:
                                 self._check_cancelled(cancelled)
+                            metadata = scanned.metadata
                             if (
-                                event.timestamp is not None
+                                metadata.timestamp is not None
                                 and (
                                     latest_timestamp is None
-                                    or event.timestamp > latest_timestamp
+                                    or metadata.timestamp > latest_timestamp
                                 )
                             ):
-                                latest_timestamp = event.timestamp
+                                latest_timestamp = metadata.timestamp
+                            event = scanned.event
+                            if event is None:
+                                continue
                             if event.computer and (
                                 event.computer.casefold() != node.casefold()
                             ):
@@ -169,8 +212,7 @@ class AuditCoordinator:
                                             f"от имени узла: {event.computer}",
                                         ),
                                     )
-                            if is_candidate_event(event):
-                                candidates.append(event)
+                            candidates.append(event)
                     except Exception as error:
                         self._emit_diagnostic(
                             diagnostics,

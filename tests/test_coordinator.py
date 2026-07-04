@@ -7,6 +7,7 @@ import pytest
 
 from evtx_auditor.coordinator import AnalysisCancelled, AuditCoordinator
 from evtx_auditor.models import EventRecord
+from evtx_auditor.parser import FastEventMetadata, ScannedRecord
 
 
 def _write_archive(path: Path):
@@ -32,6 +33,16 @@ def _fake_reader(path, context, on_issue=None):
         keywords="",
         data={},
         rendered_message="Unexpected restart",
+    )
+
+
+def _fake_scanner(path, context, candidate_predicate, on_issue=None):
+    event = next(_fake_reader(path, context, on_issue))
+    yield ScannedRecord(
+        FastEventMetadata(event.event_id, event.level, event.timestamp), event
+    )
+    yield ScannedRecord(
+        FastEventMetadata(1, 4, event.timestamp), None
     )
 
 
@@ -65,3 +76,16 @@ def test_cancel_removes_temporary_output(tmp_path: Path):
         AuditCoordinator().run(tmp_path, output, cancelled)
 
     assert not output.exists() or list(output.glob("*.tmp")) == []
+
+
+def test_coordinator_counts_fast_scanned_non_candidates(tmp_path: Path):
+    source = tmp_path / "source"
+    output = tmp_path / "output"
+    _write_archive(source / "GOOD" / "good.zip")
+
+    run = AuditCoordinator(record_scanner=_fake_scanner).run(
+        source, output, Event()
+    )
+
+    assert run.nodes[0].records_read == 2
+    assert run.nodes[0].critical_count == 1

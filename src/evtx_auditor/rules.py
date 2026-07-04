@@ -288,4 +288,8 @@ def classify_event(event: EventRecord) -> list[FindingSeed]:
 
 
 def is_candidate_event(event: EventRecord) -> bool:
-    return event.level in {1, 2} or event.event_id in CANDIDATE_EVENT_IDS
+    return is_candidate_metadata(event.event_id, event.level)
+
+
+def is_candidate_metadata(event_id: int, level: int | None) -> bool:
+    return level in {1, 2} or event_id in CANDIDATE_EVENT_IDS

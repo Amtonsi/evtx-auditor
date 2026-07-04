@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -23,6 +23,19 @@ class ParseIssue(RuntimeError):
         self.record_index = record_index
         self.message = message
         super().__init__(f"Запись {record_index}: {message}")
+
+
+@dataclass(frozen=True)
+class FastEventMetadata:
+    event_id: int
+    level: int | None
+    timestamp: datetime | None
+
+
+@dataclass(frozen=True)
+class ScannedRecord:
+    metadata: FastEventMetadata
+    event: EventRecord | None
 
 
 def _local_name(tag: str) -> str:
@@ -156,6 +169,78 @@ def parse_event_xml(xml_text: str, context: EventContext) -> EventRecord:
         rendered_message=rendered_message,
         parse_warnings=tuple(warnings),
     )
+
+
+def fast_record_metadata(record) -> FastEventMetadata:
+    substitutions = record.root().substitutions()
+    if len(substitutions) < 7:
+        raise ValueError("Недостаточно системных подстановок EVTX")
+    event_id = _int_or_none(substitutions[3].string())
+    level = _int_or_none(substitutions[0].string())
+    timestamp = _timestamp(substitutions[6].string())
+    if event_id is None:
+        raise ValueError("Event ID не прочитан из EVTX")
+    if level is not None and not 0 <= level <= 255:
+        raise ValueError(f"Некорректный Level: {level}")
+    return FastEventMetadata(event_id, level, timestamp)
+
+
+def scan_records(
+    records: Iterable,
+    context: EventContext,
+    candidate_predicate: Callable[[int, int | None], bool],
+    on_issue: Callable[[ParseIssue], None] | None = None,
+) -> Iterator[ScannedRecord]:
+    issue_handler = on_issue or (lambda issue: None)
+    for index, record in enumerate(records, start=1):
+        try:
+            metadata = fast_record_metadata(record)
+        except Exception:
+            try:
+                event = parse_event_xml(record.xml(), context)
+            except Exception as error:
+                issue_handler(ParseIssue(index, str(error)))
+                try:
+                    fallback_time = record.timestamp()
+                except Exception:
+                    fallback_time = None
+                yield ScannedRecord(
+                    FastEventMetadata(0, None, fallback_time), None
+                )
+                continue
+            metadata = FastEventMetadata(
+                event.event_id, event.level, event.timestamp
+            )
+            yield ScannedRecord(
+                metadata,
+                event
+                if candidate_predicate(event.event_id, event.level)
+                else None,
+            )
+            continue
+
+        if not candidate_predicate(metadata.event_id, metadata.level):
+            yield ScannedRecord(metadata, None)
+            continue
+        try:
+            event = parse_event_xml(record.xml(), context)
+        except Exception as error:
+            issue_handler(ParseIssue(index, str(error)))
+            yield ScannedRecord(metadata, None)
+            continue
+        yield ScannedRecord(metadata, event)
+
+
+def scan_evtx(
+    path: Path,
+    context: EventContext,
+    candidate_predicate: Callable[[int, int | None], bool],
+    on_issue: Callable[[ParseIssue], None] | None = None,
+) -> Iterator[ScannedRecord]:
+    with Evtx(str(path)) as event_log:
+        yield from scan_records(
+            event_log.records(), context, candidate_predicate, on_issue
+        )
 
 
 def iter_evtx(

@@ -7,8 +7,14 @@ if (-not (Test-Path -LiteralPath $Python)) {
     $Python = (Get-Command python -ErrorAction Stop).Source
 }
 
+$TempRoot = Join-Path $Root 'work\temp'
+$PytestTemp = Join-Path $Root 'work\pytest-tmp'
+New-Item -ItemType Directory -Force -Path $TempRoot | Out-Null
+
+$env:TEMP = $TempRoot
+$env:TMP = $TempRoot
 $env:QT_QPA_PLATFORM = 'offscreen'
-& $Python -m pytest -v
+& $Python -m pytest -v --basetemp $PytestTemp -p no:cacheprovider
 if ($LASTEXITCODE -ne 0) {
     throw "Tests failed with exit code $LASTEXITCODE"
 }
@@ -34,4 +40,3 @@ if ($Process.ExitCode -ne 0) {
 }
 
 Get-FileHash -Algorithm SHA256 -LiteralPath $Exe
-

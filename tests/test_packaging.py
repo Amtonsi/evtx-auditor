@@ -13,6 +13,9 @@ def test_packaging_files_define_verified_windowed_build():
     assert "console=False" in spec
     assert "python -m pytest" not in build
     assert "-m pytest" in build
+    assert "--basetemp" in build
+    assert "$env:TEMP" in build
+    assert "$env:TMP" in build
     assert "--self-test" in build
 
 

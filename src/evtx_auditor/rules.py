@@ -187,6 +187,8 @@ RULES = (
     ),
 )
 
+CANDIDATE_EVENT_IDS = {rule.event_id for rule in RULES} | {4625}
+
 
 def lookup_specific_rule(event: EventRecord) -> RuleDefinition | None:
     for rule in RULES:
@@ -283,3 +285,7 @@ def classify_event(event: EventRecord) -> list[FindingSeed]:
     if event.level == 2:
         return [generic_seed(event, FindingCategory.ERROR, 50)]
     return []
+
+
+def is_candidate_event(event: EventRecord) -> bool:
+    return event.level in {1, 2} or event.event_id in CANDIDATE_EVENT_IDS

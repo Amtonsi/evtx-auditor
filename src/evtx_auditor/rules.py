@@ -293,3 +293,9 @@ def is_candidate_event(event: EventRecord) -> bool:
 
 def is_candidate_metadata(event_id: int, level: int | None) -> bool:
     return level in {1, 2} or event_id in CANDIDATE_EVENT_IDS
+
+
+def requires_full_event_details(
+    event_id: int, level: int | None
+) -> bool:
+    return event_id in CANDIDATE_EVENT_IDS

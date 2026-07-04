@@ -325,6 +325,9 @@
             "Компьютер": event.computer,
             "Task / Opcode": `${event.task ?? "—"} / ${event.opcode ?? "—"}`,
             "Keywords": event.keywords || "—",
+            "Детализация": event.warnings.includes("details_sampled_from_group")
+              ? "Групповой образец: точные время и Record ID сохранены, повторяющиеся технические поля показаны по первому событию группы"
+              : "Полная запись",
             "Описание": event.message || "Описание поставщика недоступно"
           };
           for (const [key, value] of Object.entries(fields)) {

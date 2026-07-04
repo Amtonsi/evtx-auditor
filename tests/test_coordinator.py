@@ -36,7 +36,13 @@ def _fake_reader(path, context, on_issue=None):
     )
 
 
-def _fake_scanner(path, context, candidate_predicate, on_issue=None):
+def _fake_scanner(
+    path,
+    context,
+    candidate_predicate,
+    on_issue=None,
+    always_render_predicate=None,
+):
     event = next(_fake_reader(path, context, on_issue))
     yield ScannedRecord(
         FastEventMetadata(event.event_id, event.level, event.timestamp), event

@@ -5,6 +5,7 @@ from evtx_auditor.parser import (
     fast_record_metadata,
     parse_event_xml,
     scan_records,
+    static_template_fields,
 )
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -63,19 +64,46 @@ class _FakeValue:
 
 
 class _FakeRoot:
-    def __init__(self, event_id, level, timestamp):
+    def __init__(
+        self,
+        event_id,
+        level,
+        timestamp,
+        provider="Demo-Provider",
+        channel="System",
+        record_id=1,
+    ):
         self.values = [_FakeValue("") for _ in range(17)]
         self.values[0] = _FakeValue(str(level))
         self.values[3] = _FakeValue(str(event_id))
         self.values[6] = _FakeValue(timestamp)
+        self.values[10] = _FakeValue(str(record_id))
+        self.values[14] = _FakeValue(provider)
+        self.values[16] = _FakeValue(channel)
 
     def substitutions(self):
         return self.values
 
 
 class _FakeRecord:
-    def __init__(self, event_id, level, timestamp, xml):
-        self.root_value = _FakeRoot(event_id, level, timestamp)
+    def __init__(
+        self,
+        event_id,
+        level,
+        timestamp,
+        xml,
+        provider="Demo-Provider",
+        channel="System",
+        record_id=1,
+    ):
+        self.root_value = _FakeRoot(
+            event_id,
+            level,
+            timestamp,
+            provider,
+            channel,
+            record_id,
+        )
         self.xml_value = xml
         self.xml_calls = 0
 
@@ -124,3 +152,54 @@ def test_scan_records_renders_xml_only_for_candidates():
     assert scanned[1].event is None
     assert candidate.xml_calls == 1
     assert ordinary.xml_calls == 0
+
+
+def test_scan_records_samples_repeated_generic_error_xml():
+    xml = """<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+      <System><Provider Name="Demo-Provider"/><EventID>1000</EventID><Level>2</Level>
+      <TimeCreated SystemTime="2026-07-02T09:10:11Z"/><EventRecordID>1</EventRecordID>
+      <Channel>System</Channel><Computer>HOST</Computer></System>
+      <EventData><Data Name="Code">5</Data></EventData>
+      <RenderingInfo><Message>Repeated failure</Message></RenderingInfo>
+    </Event>"""
+    first = _FakeRecord(
+        1000,
+        2,
+        "2026-07-02 09:10:11+00:00",
+        xml,
+        record_id=1,
+    )
+    second = _FakeRecord(
+        1000,
+        2,
+        "2026-07-02 09:11:11+00:00",
+        "<must-not-render/>",
+        record_id=2,
+    )
+
+    scanned = list(
+        scan_records(
+            [first, second],
+            EventContext("HOST", "events.zip", "System.evtx"),
+            lambda event_id, level: level in {1, 2},
+            always_render_predicate=lambda event_id, level: False,
+        )
+    )
+
+    assert first.xml_calls == 1
+    assert second.xml_calls == 0
+    assert scanned[1].event is not None
+    assert scanned[1].event.record_id == 2
+    assert scanned[1].event.rendered_message == "Repeated failure"
+    assert "details_sampled_from_group" in scanned[1].event.parse_warnings
+
+
+def test_static_template_fields_extract_classic_provider_and_channel():
+    template = """<Event><System><Provider Name="iaStor"></Provider>
+    <EventID>[Conditional Substitution(index=3, type=6)]</EventID>
+    <Channel>System</Channel><Computer>HOST</Computer></System></Event>"""
+
+    provider, channel = static_template_fields(template)
+
+    assert provider == "iaStor"
+    assert channel == "System"

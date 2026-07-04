@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Iterable, Iterator
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from pathlib import Path
+import re
 from xml.etree import ElementTree
 
 from Evtx.Evtx import Evtx
+from Evtx.Views import evtx_template_readable_view
 
 from .models import EventRecord
 
@@ -30,6 +32,9 @@ class FastEventMetadata:
     event_id: int
     level: int | None
     timestamp: datetime | None
+    record_id: int | None = None
+    provider: str = ""
+    channel: str = ""
 
 
 @dataclass(frozen=True)
@@ -171,8 +176,26 @@ def parse_event_xml(xml_text: str, context: EventContext) -> EventRecord:
     )
 
 
-def fast_record_metadata(record) -> FastEventMetadata:
-    substitutions = record.root().substitutions()
+def static_template_fields(template: str) -> tuple[str, str]:
+    provider_match = re.search(
+        r'<Provider\b[^>]*\bName="([^"]*)"', template
+    )
+    channel_match = re.search(r"<Channel>([^<]*)</Channel>", template)
+    provider = provider_match.group(1).strip() if provider_match else ""
+    channel = channel_match.group(1).strip() if channel_match else ""
+    if provider.startswith("["):
+        provider = ""
+    if channel.startswith("["):
+        channel = ""
+    return provider, channel
+
+
+def fast_record_metadata(
+    record,
+    template_cache: dict[tuple[int, int], tuple[str, str]] | None = None,
+) -> FastEventMetadata:
+    root = record.root()
+    substitutions = root.substitutions()
     if len(substitutions) < 7:
         raise ValueError("Недостаточно системных подстановок EVTX")
     event_id = _int_or_none(substitutions[3].string())
@@ -182,7 +205,56 @@ def fast_record_metadata(record) -> FastEventMetadata:
         raise ValueError("Event ID не прочитан из EVTX")
     if level is not None and not 0 <= level <= 255:
         raise ValueError(f"Некорректный Level: {level}")
-    return FastEventMetadata(event_id, level, timestamp)
+    record_id = (
+        _int_or_none(substitutions[10].string())
+        if len(substitutions) > 10
+        else None
+    )
+    provider = substitutions[14].string() if len(substitutions) > 14 else ""
+    channel = substitutions[16].string() if len(substitutions) > 16 else ""
+    if template_cache is not None and (not provider or not channel):
+        instance = root.template_instance()
+        template_key = (instance.template_id(), instance.template_offset())
+        if template_key not in template_cache:
+            template_cache[template_key] = static_template_fields(
+                evtx_template_readable_view(root)
+            )
+        static_provider, static_channel = template_cache[template_key]
+        provider = provider or static_provider
+        channel = channel or static_channel
+    return FastEventMetadata(
+        event_id,
+        level,
+        timestamp,
+        record_id,
+        provider.strip(),
+        channel.strip(),
+    )
+
+
+def _sampled_event(
+    prototype: EventRecord,
+    metadata: FastEventMetadata,
+    context: EventContext,
+) -> EventRecord:
+    return replace(
+        prototype,
+        node=context.node,
+        archive=context.archive,
+        log_file=context.log_file,
+        channel=metadata.channel or prototype.channel,
+        provider=metadata.provider or prototype.provider,
+        event_id=metadata.event_id,
+        level=metadata.level,
+        timestamp=metadata.timestamp,
+        record_id=metadata.record_id,
+        data={},
+        parse_warnings=tuple(
+            dict.fromkeys(
+                (*prototype.parse_warnings, "details_sampled_from_group")
+            )
+        ),
+    )
 
 
 def scan_records(
@@ -190,11 +262,16 @@ def scan_records(
     context: EventContext,
     candidate_predicate: Callable[[int, int | None], bool],
     on_issue: Callable[[ParseIssue], None] | None = None,
+    *,
+    always_render_predicate: Callable[[int, int | None], bool] | None = None,
 ) -> Iterator[ScannedRecord]:
     issue_handler = on_issue or (lambda issue: None)
+    detailed = always_render_predicate or (lambda event_id, level: True)
+    prototypes: dict[tuple[str, str, int, int | None], EventRecord] = {}
+    template_cache: dict[tuple[int, int], tuple[str, str]] = {}
     for index, record in enumerate(records, start=1):
         try:
-            metadata = fast_record_metadata(record)
+            metadata = fast_record_metadata(record, template_cache)
         except Exception:
             try:
                 event = parse_event_xml(record.xml(), context)
@@ -222,12 +299,34 @@ def scan_records(
         if not candidate_predicate(metadata.event_id, metadata.level):
             yield ScannedRecord(metadata, None)
             continue
+        group_key = (
+            metadata.provider.casefold(),
+            metadata.channel.casefold(),
+            metadata.event_id,
+            metadata.level,
+        )
+        render_full = (
+            detailed(metadata.event_id, metadata.level)
+            or not metadata.provider
+            or group_key not in prototypes
+        )
+        if not render_full:
+            yield ScannedRecord(
+                metadata,
+                _sampled_event(prototypes[group_key], metadata, context),
+            )
+            continue
         try:
             event = parse_event_xml(record.xml(), context)
         except Exception as error:
             issue_handler(ParseIssue(index, str(error)))
             yield ScannedRecord(metadata, None)
             continue
+        if (
+            not detailed(metadata.event_id, metadata.level)
+            and metadata.provider
+        ):
+            prototypes[group_key] = event
         yield ScannedRecord(metadata, event)
 
 
@@ -236,10 +335,16 @@ def scan_evtx(
     context: EventContext,
     candidate_predicate: Callable[[int, int | None], bool],
     on_issue: Callable[[ParseIssue], None] | None = None,
+    *,
+    always_render_predicate: Callable[[int, int | None], bool] | None = None,
 ) -> Iterator[ScannedRecord]:
     with Evtx(str(path)) as event_log:
         yield from scan_records(
-            event_log.records(), context, candidate_predicate, on_issue
+            event_log.records(),
+            context,
+            candidate_predicate,
+            on_issue,
+            always_render_predicate=always_render_predicate,
         )
 
 

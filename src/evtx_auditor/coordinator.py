@@ -25,7 +25,11 @@ from .parser import (
     scan_evtx,
 )
 from .report import render_report
-from .rules import is_candidate_event, is_candidate_metadata
+from .rules import (
+    is_candidate_event,
+    is_candidate_metadata,
+    requires_full_event_details,
+)
 
 
 @dataclass(frozen=True)
@@ -179,6 +183,9 @@ class AuditCoordinator:
                                 context,
                                 is_candidate_metadata,
                                 on_issue,
+                                always_render_predicate=(
+                                    requires_full_event_details
+                                ),
                             )
                         for scanned in scanned_records:
                             records_read += 1

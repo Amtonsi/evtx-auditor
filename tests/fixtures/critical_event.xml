@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+  <System>
+    <Provider Name="Microsoft-Windows-Kernel-Power"/>
+    <EventID>41</EventID>
+    <Level>1</Level>
+    <Task>63</Task>
+    <Opcode>0</Opcode>
+    <Keywords>0x8000400000000002</Keywords>
+    <TimeCreated SystemTime="2026-07-02T01:02:03.1234567Z"/>
+    <EventRecordID>100</EventRecordID>
+    <Channel>System</Channel>
+    <Computer>HOST-1</Computer>
+  </System>
+  <EventData>
+    <Data Name="BugcheckCode">0</Data>
+    <Data Name="PowerButtonTimestamp">0</Data>
+  </EventData>
+</Event>
+

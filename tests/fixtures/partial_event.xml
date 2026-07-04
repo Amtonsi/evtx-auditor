@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+  <System>
+    <Provider Name="Example-Provider"/>
+    <EventID>1000</EventID>
+    <Level>2</Level>
+    <Channel>Application</Channel>
+    <Computer>HOST</Computer>
+  </System>
+  <UserData>
+    <Example>
+      <Path>C:\Program Files\Example\app.exe</Path>
+    </Example>
+  </UserData>
+</Event>
+

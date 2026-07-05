@@ -187,7 +187,7 @@ $env:QT_QPA_PLATFORM = 'offscreen'
 
 ## Генерация PDF-инструкции
 
-PDF-инструкция создается из этого Markdown-файла:
+PDF-инструкция создается отдельным генератором ReportLab в визуальном стиле WinAudit-подобного проекта: альбомный A4, титульная страница, схемы, карточки и пошаговые разделы.
 
 ```powershell
 python scripts\make_user_guide_pdf.py

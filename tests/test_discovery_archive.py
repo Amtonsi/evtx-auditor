@@ -3,7 +3,7 @@ from zipfile import ZipFile
 
 import pytest
 
-from evtx_auditor.archive import UnsafeArchiveError, extract_evtx
+from evtx_auditor.archive import UnsafeArchiveError, extract_event_logs, extract_evtx
 from evtx_auditor.discovery import discover_archives, group_archives_by_node
 
 
@@ -38,3 +38,16 @@ def test_extracts_only_evtx(tmp_path: Path):
 
     assert [item.name for item in files] == ["Application.evtx"]
     assert files[0].read_bytes() == b"application"
+
+
+def test_extracts_evtx_and_legacy_evt(tmp_path: Path):
+    archive = tmp_path / "mixed.zip"
+    with ZipFile(archive, "w") as handle:
+        handle.writestr("Application.evtx", b"application")
+        handle.writestr("System.evt", b"legacy-system")
+        handle.writestr("notes.txt", b"ignored")
+
+    files = extract_event_logs(archive, tmp_path / "extract")
+
+    assert [item.name for item in files] == ["Application.evtx", "System.evt"]
+    assert files[1].read_bytes() == b"legacy-system"

@@ -8,8 +8,9 @@ from tempfile import TemporaryDirectory
 from threading import Event
 
 from .analyzer import analyze_events
-from .archive import extract_evtx
+from .archive import extract_event_logs
 from .discovery import discover_archives, group_archives_by_node
+from .legacy_evt import scan_evt
 from .models import (
     AuditRun,
     Diagnostic,
@@ -67,11 +68,13 @@ class AuditCoordinator:
         message: Callable[[Diagnostic], None] | None = None,
         event_reader: EventReader | None = None,
         record_scanner: RecordScanner = scan_evtx,
+        legacy_record_scanner: RecordScanner = scan_evt,
     ) -> None:
         self.progress = progress or (lambda update: None)
         self.message = message or (lambda diagnostic: None)
         self.event_reader = event_reader
         self.record_scanner = record_scanner
+        self.legacy_record_scanner = legacy_record_scanner
 
     @staticmethod
     def _check_cancelled(cancelled: Event) -> None:
@@ -114,7 +117,7 @@ class AuditCoordinator:
                 )
                 destination = temporary_root / f"archive-{archive_index}"
                 try:
-                    logs = extract_evtx(source.path, destination)
+                    logs = extract_event_logs(source.path, destination)
                 except Exception as error:
                     self._emit_diagnostic(
                         diagnostics,
@@ -128,7 +131,7 @@ class AuditCoordinator:
                     self._emit_diagnostic(
                         diagnostics,
                         Diagnostic.error(
-                            source.path.name, "В архиве нет файлов EVTX"
+                            source.path.name, "В архиве нет файлов EVTX/EVT"
                         ),
                     )
                     continue
@@ -178,7 +181,12 @@ class AuditCoordinator:
                                 )
                             )
                         else:
-                            scanned_records = self.record_scanner(
+                            scanner = (
+                                self.legacy_record_scanner
+                                if log_path.suffix.casefold() == ".evt"
+                                else self.record_scanner
+                            )
+                            scanned_records = scanner(
                                 log_path,
                                 context,
                                 is_candidate_metadata,

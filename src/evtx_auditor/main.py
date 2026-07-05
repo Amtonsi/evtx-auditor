@@ -8,10 +8,12 @@ from pathlib import Path
 def self_test() -> int:
     from Evtx.Evtx import Evtx
     from PySide6.QtCore import qVersion
+    import win32evtlog
 
     from evtx_auditor.report import render_report
 
     assert Evtx is not None
+    assert win32evtlog.OpenBackupEventLog is not None
     assert qVersion()
     assert render_report is not None
     assert (

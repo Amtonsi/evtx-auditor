@@ -62,3 +62,34 @@ def test_unknown_level_two_uses_rendered_message(make_event):
 
     assert seed.category is FindingCategory.ERROR
     assert "Application crashed" in seed.explanation
+
+
+def test_xp_security_log_clear_517_is_critical(make_event):
+    seeds = classify_event(
+        make_event(
+            event_id=517,
+            level=0,
+            channel="Security",
+            provider="Security",
+            source_format="EVT",
+        )
+    )
+
+    assert seeds[0].category is FindingCategory.CRITICAL
+    assert "XP" in seeds[0].title
+
+
+def test_xp_failed_logon_529_is_security_finding(make_event):
+    seeds = classify_event(
+        make_event(
+            event_id=529,
+            level=0,
+            channel="Security",
+            provider="Security",
+            data={"String_1": "operator", "String_3": "192.168.1.10"},
+            source_format="EVT",
+        )
+    )
+
+    assert seeds[0].category is FindingCategory.SECURITY
+    assert "operator" in seeds[0].grouping_key

@@ -5,6 +5,7 @@ from zipfile import ZipFile, ZipInfo
 MAX_ENTRY_SIZE = 512 * 1024 * 1024
 MAX_ARCHIVE_SIZE = 2 * 1024 * 1024 * 1024
 MAX_ENTRIES = 1000
+SUPPORTED_LOG_SUFFIXES = (".evtx", ".evt")
 
 
 class UnsafeArchiveError(ValueError):
@@ -27,7 +28,7 @@ def _validated_relative_path(info: ZipInfo) -> Path:
     return Path(*value.parts)
 
 
-def extract_evtx(archive_path: Path, destination: Path) -> list[Path]:
+def extract_event_logs(archive_path: Path, destination: Path) -> list[Path]:
     destination.mkdir(parents=True, exist_ok=True)
     destination_root = destination.resolve()
     extracted: list[Path] = []
@@ -40,7 +41,8 @@ def extract_evtx(archive_path: Path, destination: Path) -> list[Path]:
         selected = [
             info
             for info in entries
-            if not info.is_dir() and info.filename.lower().endswith(".evtx")
+            if not info.is_dir()
+            and info.filename.lower().endswith(SUPPORTED_LOG_SUFFIXES)
         ]
         total_size = sum(info.file_size for info in selected)
         if total_size > MAX_ARCHIVE_SIZE:
@@ -59,3 +61,7 @@ def extract_evtx(archive_path: Path, destination: Path) -> list[Path]:
                 copyfileobj(source, output, length=1024 * 1024)
             extracted.append(target)
     return sorted(extracted, key=lambda item: str(item).casefold())
+
+
+def extract_evtx(archive_path: Path, destination: Path) -> list[Path]:
+    return extract_event_logs(archive_path, destination)

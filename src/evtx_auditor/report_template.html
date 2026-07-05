@@ -323,6 +323,7 @@
           const fields = {
             "Архив": event.archive,
             "Журнал": event.channel,
+            "Формат": event.source_format || "EVTX",
             "Поставщик": event.provider,
             "Event ID": event.event_id,
             "Уровень": event.level ?? "—",

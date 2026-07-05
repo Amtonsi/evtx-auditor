@@ -16,6 +16,12 @@ def _write_archive(path: Path):
         handle.writestr("System.evtx", b"fixture")
 
 
+def _write_evt_archive(path: Path):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with ZipFile(path, "w") as handle:
+        handle.writestr("System.evt", b"legacy-fixture")
+
+
 def _fake_reader(path, context, on_issue=None):
     yield EventRecord(
         node=context.node,
@@ -95,3 +101,47 @@ def test_coordinator_counts_fast_scanned_non_candidates(tmp_path: Path):
 
     assert run.nodes[0].records_read == 2
     assert run.nodes[0].critical_count == 1
+
+
+def test_coordinator_routes_evt_to_legacy_scanner(tmp_path: Path):
+    source = tmp_path / "source"
+    output = tmp_path / "output"
+    _write_evt_archive(source / "XP-HOST" / "xp.zip")
+    calls = []
+
+    def evtx_scanner(*args, **kwargs):
+        raise AssertionError("EVTX scanner must not read .evt files")
+
+    def legacy_scanner(path, context, candidate_predicate, on_issue=None, always_render_predicate=None):
+        calls.append((path.name, context.log_file))
+        event = EventRecord(
+            node=context.node,
+            archive=context.archive,
+            log_file=context.log_file,
+            channel="System",
+            provider="LegacySource",
+            event_id=1000,
+            level=2,
+            timestamp=datetime(2026, 7, 2, tzinfo=timezone.utc),
+            record_id=1,
+            computer=context.node,
+            task=None,
+            opcode=None,
+            keywords="",
+            data={},
+            rendered_message="Legacy failure",
+            source_format="EVT",
+        )
+        yield ScannedRecord(
+            FastEventMetadata(event.event_id, event.level, event.timestamp),
+            event,
+        )
+
+    run = AuditCoordinator(
+        record_scanner=evtx_scanner,
+        legacy_record_scanner=legacy_scanner,
+    ).run(source, output, Event())
+
+    assert calls == [("System.evt", "System.evt")]
+    assert run.nodes[0].records_read == 1
+    assert run.nodes[0].error_count == 1

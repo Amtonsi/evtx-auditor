@@ -69,6 +69,7 @@ class EventRecord:
     data: dict[str, str]
     rendered_message: str | None
     parse_warnings: tuple[str, ...] = ()
+    source_format: str = "EVTX"
 
 
 @dataclass(frozen=True)

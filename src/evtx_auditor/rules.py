@@ -24,7 +24,78 @@ class RuleDefinition:
     suppress_finding: bool = False
 
 
+def _xp_security_rule(
+    event_id: int,
+    category: FindingCategory,
+    priority: int,
+    title: str,
+    explanation: str,
+    recommendation: str,
+    key_fields: tuple[str, ...] = ("String_1", "String_2", "String_3"),
+) -> RuleDefinition:
+    return RuleDefinition(
+        event_id,
+        category,
+        priority,
+        title,
+        explanation,
+        recommendation,
+        channel="Security",
+        key_fields=key_fields,
+    )
+
+
+XP_SECURITY_RULES = (
+    _xp_security_rule(
+        517,
+        FindingCategory.CRITICAL,
+        100,
+        "Windows XP: журнал Security был очищен",
+        "В Windows XP/Server 2003 событие 517 фиксирует очистку журнала аудита безопасности.",
+        "Проверить инициатора очистки, соседние события и наличие централизованной копии журнала.",
+        ("String_1", "String_2", "String_4", "String_5"),
+    ),
+    *(
+        _xp_security_rule(
+            event_id,
+            FindingCategory.SECURITY,
+            72,
+            f"Windows XP: неудачная попытка входа (Event ID {event_id})",
+            "Legacy-событие Windows XP указывает на отказ входа или проверки учётных данных.",
+            "Проверить имя учётной записи, домен/рабочую станцию, источник и причину отказа.",
+            ("String_1", "String_2", "String_3", "String_4"),
+        )
+        for event_id in (529, 530, 531, 532, 533, 534, 535, 536, 537, 539, 680)
+    ),
+    *(
+        _xp_security_rule(
+            event_id,
+            FindingCategory.SECURITY,
+            70,
+            f"Windows XP: изменение учётной записи (Event ID {event_id})",
+            "Legacy-событие Windows XP относится к созданию, удалению, изменению или блокировке учётной записи.",
+            "Проверить изменённую учётную запись, инициатора и основание изменения.",
+            ("String_1", "String_2", "String_3", "String_4"),
+        )
+        for event_id in (624, 630, 642, 644)
+    ),
+    *(
+        _xp_security_rule(
+            event_id,
+            FindingCategory.SECURITY,
+            82,
+            f"Windows XP: изменение группы безопасности (Event ID {event_id})",
+            "Legacy-событие Windows XP относится к добавлению или удалению участника группы безопасности.",
+            "Проверить группу, участника, инициатора и допустимость изменения прав.",
+            ("String_1", "String_2", "String_3", "String_4"),
+        )
+        for event_id in (632, 633, 636, 637, 660, 661)
+    ),
+)
+
+
 RULES = (
+    *XP_SECURITY_RULES,
     RuleDefinition(
         104,
         FindingCategory.CRITICAL,

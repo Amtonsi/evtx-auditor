@@ -9,6 +9,7 @@ def test_packaging_files_define_verified_windowed_build():
     build = (ROOT / "scripts" / "build.ps1").read_text(encoding="utf-8")
 
     assert "report_template.html" in spec
+    assert "win32evtlog" in spec
     assert 'name="EVTXAuditor"' in spec
     assert "console=False" in spec
     assert "python -m pytest" not in build
@@ -23,7 +24,10 @@ def test_packaging_files_define_verified_windowed_build():
 
 def test_readme_documents_offline_operation():
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    requirements = (ROOT / "requirements.txt").read_text(encoding="utf-8")
 
     assert "30 дней" in readme
     assert "4625" in readme
+    assert "Application.evt" in readme
+    assert "pywin32==312" in requirements
     assert "не выполняет сетевых запросов" in readme

@@ -15,6 +15,7 @@ def _event_payload(event: EventRecord) -> dict[str, Any]:
     return {
         "archive": event.archive,
         "log_file": event.log_file,
+        "source_format": getattr(event, "source_format", "EVTX"),
         "channel": event.channel,
         "provider": event.provider,
         "event_id": event.event_id,
@@ -128,4 +129,3 @@ def render_report(run: AuditRun) -> str:
         .read_text(encoding="utf-8")
     )
     return template.replace("__REPORT_DATA__", safe_json(report_payload(run)))
-

@@ -14,7 +14,12 @@ a = Analysis(
             "evtx_auditor",
         )
     ],
-    hiddenimports=collect_submodules("Evtx"),
+    hiddenimports=[
+        *collect_submodules("Evtx"),
+        "win32evtlog",
+        "pywintypes",
+        "pythoncom",
+    ],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
@@ -41,4 +46,3 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
 )
-

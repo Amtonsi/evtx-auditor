@@ -88,3 +88,19 @@ powershell -ExecutionPolicy Bypass -File scripts\build.ps1
 - Отчёт сначала записывается во временный файл и публикуется атомарно.
 - Текст событий экранируется перед включением в HTML.
 - Реальные EVTX и ZIP не входят в архив исходного кода.
+
+## Документация
+
+- Полная инструкция пользователя: [docs/USER_GUIDE.md](docs/USER_GUIDE.md).
+- PDF-инструкция: [docs/EVTXAuditor_User_Guide.pdf](docs/EVTXAuditor_User_Guide.pdf).
+- PDF можно пересоздать командой:
+
+```powershell
+python scripts\make_user_guide_pdf.py
+```
+
+## Лицензия
+
+Проект распространяется под лицензией MIT.
+
+Разработал: Абдрахманов Амаль Даулетович.

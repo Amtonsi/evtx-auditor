@@ -273,13 +273,14 @@ def build_pdf(output_path: str | Path) -> Path:
         yy = y + h - 92
         for title_text, value in [
             ("Папка с архивами", r"C:\Users\impal\Downloads\АУДИТ 2"),
-            ("Папка отчета", r"C:\Users\impal\Documents\Codex\outputs"),
+            ("Папка отчета", ""),
         ]:
             card(content_x, yy - 30, w - 36, 34, fill=colors.HexColor("#F8FAFC"), radius=5)
             set_font(7.8, bold=True, color=muted)
             c.drawString(content_x + 10, yy - 9, title_text)
             set_font(8.1, color=ink)
-            c.drawString(content_x + 120, yy - 9, value)
+            if value:
+                c.drawString(content_x + 120, yy - 9, value)
             c.setFillColor(light_blue)
             c.roundRect(x + w - 84, yy - 24, 52, 20, 7, stroke=0, fill=1)
             set_font(7.3, bold=True, color=blue)

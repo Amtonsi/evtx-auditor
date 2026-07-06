@@ -46,12 +46,14 @@ def test_input_fields_show_visible_guidance(tmp_path: Path):
     assert window.output_edit.isClearButtonEnabled() is False
     assert "Укажите папку" in window.output_hint.text()
     assert window.period_days_spin.toolTip() == "Введите период анализа в днях"
+    assert window.period_days_spin.suffix() == ""
     assert "Введите период анализа" in window.period_hint.text()
     assert (
         window.period_days_spin.buttonSymbols()
         is QAbstractSpinBox.ButtonSymbols.NoButtons
     )
     assert "placeholder-text-color" in window.styleSheet()
+    assert "padding: 4px 10px" in window.styleSheet()
     window.close()
 
 

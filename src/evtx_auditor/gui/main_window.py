@@ -70,9 +70,15 @@ QLineEdit, QSpinBox, QPlainTextEdit {
     border-radius: 8px;
     color: #0f172a;
     font-size: 12px;
-    padding: 9px;
     placeholder-text-color: #475569;
     selection-background-color: #218f82;
+}
+QLineEdit, QSpinBox {
+    min-height: 28px;
+    padding: 4px 10px;
+}
+QPlainTextEdit {
+    padding: 9px;
 }
 QLineEdit:focus, QSpinBox:focus, QPlainTextEdit:focus {
     border: 1px solid #218f82;
@@ -234,7 +240,6 @@ class MainWindow(QMainWindow):
         self.period_days_spin.setRange(1, 3650)
         self.period_days_spin.setValue(30)
         self.period_days_spin.setSingleStep(1)
-        self.period_days_spin.setSuffix(" дней")
         self.period_days_spin.setButtonSymbols(
             QAbstractSpinBox.ButtonSymbols.NoButtons
         )

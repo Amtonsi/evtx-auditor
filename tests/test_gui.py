@@ -3,7 +3,7 @@ from pathlib import Path
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QAbstractSpinBox, QApplication
 
 from evtx_auditor.gui.main_window import MainWindow
 
@@ -37,14 +37,21 @@ def test_input_fields_show_visible_guidance(tmp_path: Path):
         window.source_edit.placeholderText()
         == "Укажите папку с ZIP-архивами журналов Windows"
     )
+    assert window.source_edit.isClearButtonEnabled() is False
     assert "Укажите папку" in window.source_hint.text()
     assert (
         window.output_edit.placeholderText()
         == "Укажите папку для сохранения HTML-отчёта"
     )
+    assert window.output_edit.isClearButtonEnabled() is False
     assert "Укажите папку" in window.output_hint.text()
     assert window.period_days_spin.toolTip() == "Введите период анализа в днях"
     assert "Введите период анализа" in window.period_hint.text()
+    assert (
+        window.period_days_spin.buttonSymbols()
+        is QAbstractSpinBox.ButtonSymbols.NoButtons
+    )
+    assert "placeholder-text-color" in window.styleSheet()
     window.close()
 
 

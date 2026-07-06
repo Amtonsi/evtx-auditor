@@ -3,8 +3,15 @@ from __future__ import annotations
 from pathlib import Path
 
 from PySide6.QtCore import QThread, QUrl
-from PySide6.QtGui import QCloseEvent, QDesktopServices, QFont
+from PySide6.QtGui import (
+    QColor,
+    QCloseEvent,
+    QDesktopServices,
+    QFont,
+    QPalette,
+)
 from PySide6.QtWidgets import (
+    QAbstractSpinBox,
     QFileDialog,
     QFrame,
     QGridLayout,
@@ -61,7 +68,10 @@ QLineEdit, QSpinBox, QPlainTextEdit {
     background: white;
     border: 1px solid #cbd5e1;
     border-radius: 8px;
+    color: #0f172a;
+    font-size: 12px;
     padding: 9px;
+    placeholder-text-color: #475569;
     selection-background-color: #218f82;
 }
 QLineEdit:focus, QSpinBox:focus, QPlainTextEdit:focus {
@@ -132,6 +142,13 @@ def _card(layout) -> QFrame:
     return frame
 
 
+def _make_input_text_visible(widget) -> None:
+    palette = widget.palette()
+    palette.setColor(QPalette.ColorRole.Text, QColor("#0f172a"))
+    palette.setColor(QPalette.ColorRole.PlaceholderText, QColor("#475569"))
+    widget.setPalette(palette)
+
+
 class MainWindow(QMainWindow):
     def __init__(
         self,
@@ -179,8 +196,9 @@ class MainWindow(QMainWindow):
         self.source_edit.setPlaceholderText(
             "Укажите папку с ZIP-архивами журналов Windows"
         )
-        self.source_edit.setClearButtonEnabled(True)
-        self.source_button = QPushButton("Выбрать")
+        _make_input_text_visible(self.source_edit)
+        self.source_edit.setClearButtonEnabled(False)
+        self.source_button = QPushButton("Выбрать папку")
         self.source_button.clicked.connect(self.choose_source)
         self.source_hint = QLabel(
             "Укажите папку, где лежат подпапки узлов и ZIP-архивы."
@@ -197,8 +215,9 @@ class MainWindow(QMainWindow):
         self.output_edit.setPlaceholderText(
             "Укажите папку для сохранения HTML-отчёта"
         )
-        self.output_edit.setClearButtonEnabled(True)
-        self.output_button = QPushButton("Выбрать")
+        _make_input_text_visible(self.output_edit)
+        self.output_edit.setClearButtonEnabled(False)
+        self.output_button = QPushButton("Выбрать папку")
         self.output_button.clicked.connect(self.choose_output)
         self.output_hint = QLabel(
             "Укажите папку, куда будет автоматически создан HTML-отчёт."
@@ -216,7 +235,11 @@ class MainWindow(QMainWindow):
         self.period_days_spin.setValue(30)
         self.period_days_spin.setSingleStep(1)
         self.period_days_spin.setSuffix(" дней")
+        self.period_days_spin.setButtonSymbols(
+            QAbstractSpinBox.ButtonSymbols.NoButtons
+        )
         self.period_days_spin.setToolTip("Введите период анализа в днях")
+        _make_input_text_visible(self.period_days_spin)
         self.period_hint = QLabel(
             "Введите период анализа в днях. Например: 30."
         )

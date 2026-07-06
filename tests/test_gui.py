@@ -39,12 +39,14 @@ def test_input_fields_show_visible_guidance(tmp_path: Path):
     )
     assert window.source_edit.isClearButtonEnabled() is False
     assert "Укажите папку" in window.source_hint.text()
+    assert window.source_hint.contentsMargins().top() == 6
     assert (
         window.output_edit.placeholderText()
         == "Укажите папку для сохранения HTML-отчёта"
     )
     assert window.output_edit.isClearButtonEnabled() is False
     assert "Укажите папку" in window.output_hint.text()
+    assert window.output_hint.contentsMargins().top() == 6
     assert window.period_days_spin.toolTip() == "Введите период анализа в днях"
     assert window.period_days_spin.suffix() == ""
     assert "Введите период анализа" in window.period_hint.text()

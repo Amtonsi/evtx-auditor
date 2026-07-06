@@ -210,6 +210,7 @@ class MainWindow(QMainWindow):
             "Укажите папку, где лежат подпапки узлов и ZIP-архивы."
         )
         self.source_hint.setProperty("class", "helperText")
+        self.source_hint.setContentsMargins(0, 6, 0, 0)
         source_layout.addWidget(source_label, 0, 0, 1, 2)
         source_layout.addWidget(self.source_edit, 1, 0)
         source_layout.addWidget(self.source_button, 1, 1)
@@ -229,6 +230,7 @@ class MainWindow(QMainWindow):
             "Укажите папку, куда будет автоматически создан HTML-отчёт."
         )
         self.output_hint.setProperty("class", "helperText")
+        self.output_hint.setContentsMargins(0, 6, 0, 0)
         source_layout.addWidget(output_label, 3, 0, 1, 2)
         source_layout.addWidget(self.output_edit, 4, 0)
         source_layout.addWidget(self.output_button, 4, 1)

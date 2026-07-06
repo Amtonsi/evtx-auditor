@@ -103,6 +103,65 @@ def test_coordinator_counts_fast_scanned_non_candidates(tmp_path: Path):
     assert run.nodes[0].critical_count == 1
 
 
+def test_coordinator_uses_custom_analysis_period(tmp_path: Path):
+    source = tmp_path / "source"
+    output = tmp_path / "output"
+    _write_archive(source / "GOOD" / "good.zip")
+    latest = datetime(2026, 7, 2, tzinfo=timezone.utc)
+
+    def scanner(path, context, candidate_predicate, on_issue=None, always_render_predicate=None):
+        old_event = EventRecord(
+            node=context.node,
+            archive=context.archive,
+            log_file=context.log_file,
+            channel="System",
+            provider="LegacySource",
+            event_id=1000,
+            level=2,
+            timestamp=datetime(2026, 6, 22, tzinfo=timezone.utc),
+            record_id=1,
+            computer=context.node,
+            task=None,
+            opcode=None,
+            keywords="",
+            data={},
+            rendered_message="Outside period",
+        )
+        latest_event = EventRecord(
+            node=context.node,
+            archive=context.archive,
+            log_file=context.log_file,
+            channel="System",
+            provider="LegacySource",
+            event_id=1,
+            level=4,
+            timestamp=latest,
+            record_id=2,
+            computer=context.node,
+            task=None,
+            opcode=None,
+            keywords="",
+            data={},
+            rendered_message="Latest event",
+        )
+        yield ScannedRecord(
+            FastEventMetadata(old_event.event_id, old_event.level, old_event.timestamp),
+            old_event,
+        )
+        yield ScannedRecord(
+            FastEventMetadata(latest_event.event_id, latest_event.level, latest_event.timestamp),
+            latest_event,
+        )
+
+    run = AuditCoordinator(record_scanner=scanner, analysis_days=7).run(
+        source, output, Event()
+    )
+
+    assert run.nodes[0].period_start == latest.replace(day=25, month=6)
+    assert run.nodes[0].findings == ()
+    assert run.metadata["analysis_days"] == 7
+
+
 def test_coordinator_routes_evt_to_legacy_scanner(tmp_path: Path):
     source = tmp_path / "source"
     output = tmp_path / "output"

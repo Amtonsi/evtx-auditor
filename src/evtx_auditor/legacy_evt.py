@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import mmap
+import struct
 from collections.abc import Callable, Iterable, Iterator
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -24,6 +27,20 @@ EVENT_TYPE_LEVELS = {
     8: 0,
     16: 0,
 }
+
+
+@dataclass(frozen=True)
+class RawEvtRecord:
+    EventID: int
+    EventType: int
+    EventCategory: int
+    RecordNumber: int
+    SourceName: str
+    ComputerName: str
+    TimeGenerated: int
+    TimeWritten: int
+    StringInserts: tuple[str, ...]
+    Data: bytes
 
 
 def _int_or_none(value: Any) -> int | None:
@@ -169,6 +186,111 @@ def _read_backup_records(path: Path) -> Iterator[Any]:
         win32evtlog.CloseEventLog(handle)
 
 
+def _read_utf16z(buffer: bytes | mmap.mmap, start: int, limit: int) -> tuple[str, int]:
+    if start < 0 or start >= limit:
+        return "", start
+    cursor = start
+    while cursor + 1 < limit:
+        if buffer[cursor] == 0 and buffer[cursor + 1] == 0:
+            raw = bytes(buffer[start:cursor])
+            return raw.decode("utf-16le", errors="replace"), cursor + 2
+        cursor += 2
+    return "", start
+
+
+def _parse_raw_evt_record(record: bytes) -> RawEvtRecord:
+    if len(record) < 60:
+        raise ValueError("EVT record is too small")
+    (
+        record_length,
+        signature,
+        record_number,
+        time_generated,
+        time_written,
+        event_id,
+        event_type,
+        number_of_strings,
+        event_category,
+        _reserved_flags,
+        _closing_record_number,
+        string_offset,
+        _user_sid_length,
+        _user_sid_offset,
+        data_length,
+        data_offset,
+    ) = struct.unpack_from("<IIIIIIHHHHIIIIII", record, 0)
+    if record_length != len(record):
+        raise ValueError("EVT record length mismatch")
+    if signature != 0x654C664C:
+        raise ValueError("EVT record signature mismatch")
+
+    data_limit = max(56, record_length - 4)
+    source, cursor = _read_utf16z(record, 56, data_limit)
+    computer, _cursor = _read_utf16z(record, cursor, data_limit)
+
+    strings: list[str] = []
+    cursor = string_offset
+    for _index in range(number_of_strings):
+        if cursor <= 0 or cursor >= data_limit:
+            break
+        value, next_cursor = _read_utf16z(record, cursor, data_limit)
+        if next_cursor == cursor:
+            break
+        strings.append(value)
+        cursor = next_cursor
+
+    event_data = b""
+    if (
+        data_length > 0
+        and data_offset > 0
+        and data_offset + data_length <= data_limit
+    ):
+        event_data = bytes(record[data_offset : data_offset + data_length])
+
+    return RawEvtRecord(
+        EventID=event_id,
+        EventType=event_type,
+        EventCategory=event_category,
+        RecordNumber=record_number,
+        SourceName=source,
+        ComputerName=computer,
+        TimeGenerated=time_generated,
+        TimeWritten=time_written,
+        StringInserts=tuple(strings),
+        Data=event_data,
+    )
+
+
+def _read_raw_evt_records(path: Path) -> Iterator[RawEvtRecord]:
+    if path.stat().st_size == 0:
+        return
+    with path.open("rb") as handle:
+        with mmap.mmap(handle.fileno(), 0, access=mmap.ACCESS_READ) as view:
+            position = 0
+            size = len(view)
+            while True:
+                signature_position = view.find(b"LfLe", position)
+                if signature_position < 0:
+                    break
+                start = signature_position - 4
+                if start >= 0 and start + 60 <= size:
+                    record_length = struct.unpack_from("<I", view, start)[0]
+                    end = start + record_length
+                    if (
+                        record_length >= 60
+                        and end <= size
+                        and struct.unpack_from("<I", view, end - 4)[0]
+                        == record_length
+                    ):
+                        try:
+                            yield _parse_raw_evt_record(bytes(view[start:end]))
+                            position = end
+                            continue
+                        except ValueError:
+                            pass
+                position = signature_position + 4
+
+
 def scan_evt(
     path: Path,
     context: EventContext,
@@ -178,9 +300,25 @@ def scan_evt(
     always_render_predicate: Callable[[int, int | None], bool] | None = None,
 ) -> Iterator[ScannedRecord]:
     del always_render_predicate
-    yield from scan_evt_records(
-        _read_backup_records(path),
-        context,
-        candidate_predicate,
-        on_issue,
-    )
+    try:
+        yield from scan_evt_records(
+            _read_backup_records(path),
+            context,
+            candidate_predicate,
+            on_issue,
+        )
+    except Exception as error:
+        if on_issue is not None:
+            on_issue(
+                ParseIssue(
+                    0,
+                    "Windows API не открыл EVT; используется прямое чтение "
+                    f"записей: {error}",
+                )
+            )
+        yield from scan_evt_records(
+            _read_raw_evt_records(path),
+            context,
+            candidate_predicate,
+            on_issue,
+        )

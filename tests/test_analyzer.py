@@ -34,6 +34,36 @@ def test_period_is_relative_to_latest_event(make_event):
     assert [item.events[0].event_id for item in result.findings] == [1001]
 
 
+def test_custom_period_is_relative_to_latest_event(make_event):
+    latest = datetime(2026, 7, 2, tzinfo=timezone.utc)
+    events = [
+        make_event(
+            event_id=1000,
+            level=2,
+            timestamp=latest - timedelta(days=10),
+            record_id=1,
+        ),
+        make_event(
+            event_id=1001,
+            level=2,
+            timestamp=latest - timedelta(days=5),
+            record_id=2,
+        ),
+        make_event(event_id=1, level=4, timestamp=latest, record_id=3),
+    ]
+
+    result = analyze_events(
+        "HOST",
+        events,
+        diagnostics=[],
+        logs_seen=("System.evtx",),
+        analysis_days=7,
+    )
+
+    assert result.period_start == latest - timedelta(days=7)
+    assert [item.events[0].event_id for item in result.findings] == [1001]
+
+
 def test_ten_failed_logons_in_fifteen_minutes_create_one_security_finding(
     make_event,
 ):

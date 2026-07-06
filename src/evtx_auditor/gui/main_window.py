@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
     QProgressBar,
     QPushButton,
     QSizePolicy,
+    QSpinBox,
     QVBoxLayout,
     QWidget,
 )
@@ -52,14 +53,14 @@ QLabel.fieldLabel {
     font-size: 11px;
     font-weight: 700;
 }
-QLineEdit, QPlainTextEdit {
+QLineEdit, QSpinBox, QPlainTextEdit {
     background: white;
     border: 1px solid #cbd5e1;
     border-radius: 8px;
     padding: 9px;
     selection-background-color: #218f82;
 }
-QLineEdit:focus, QPlainTextEdit:focus {
+QLineEdit:focus, QSpinBox:focus, QPlainTextEdit:focus {
     border: 1px solid #218f82;
 }
 QPushButton {
@@ -80,6 +81,12 @@ QPushButton#startButton {
     border: 0;
 }
 QPushButton#startButton:hover { background: #19796f; }
+QPushButton#startButton[running="true"],
+QPushButton#startButton[running="true"]:disabled {
+    color: white;
+    background: #d97706;
+    border: 0;
+}
 QPushButton#cancelButton {
     min-height: 42px;
     color: #a62e39;
@@ -180,6 +187,16 @@ class MainWindow(QMainWindow):
         source_layout.addWidget(output_label, 2, 0, 1, 2)
         source_layout.addWidget(self.output_edit, 3, 0)
         source_layout.addWidget(self.output_button, 3, 1)
+
+        period_label = QLabel("ПЕРИОД АНАЛИЗА, ДНЕЙ")
+        period_label.setProperty("class", "fieldLabel")
+        self.period_days_spin = QSpinBox()
+        self.period_days_spin.setRange(1, 3650)
+        self.period_days_spin.setValue(30)
+        self.period_days_spin.setSingleStep(1)
+        self.period_days_spin.setSuffix(" дней")
+        source_layout.addWidget(period_label, 4, 0, 1, 2)
+        source_layout.addWidget(self.period_days_spin, 5, 0, 1, 2)
         source_layout.setColumnStretch(0, 1)
         page.addWidget(_card(source_layout))
 
@@ -187,7 +204,7 @@ class MainWindow(QMainWindow):
         config_layout.setContentsMargins(0, 0, 0, 0)
         config_layout.setSpacing(8)
         config_values = (
-            "✓ Последние 30 дней",
+            "✓ Период задаётся пользователем",
             "✓ Critical и Error",
             "✓ Опасные события ИБ",
             "✓ Единый автономный HTML",
@@ -291,28 +308,41 @@ class MainWindow(QMainWindow):
         return not message
 
     def _set_running(self, running: bool) -> None:
+        self.start_button.setProperty("running", running)
+        self.start_button.setText(
+            "Идёт сканирование..." if running else "Начать проверку"
+        )
+        self._refresh_start_button_style()
         self.start_button.setEnabled(not running)
         self.cancel_button.setEnabled(running)
         self.source_edit.setEnabled(not running)
         self.output_edit.setEnabled(not running)
         self.source_button.setEnabled(not running)
         self.output_button.setEnabled(not running)
+        self.period_days_spin.setEnabled(not running)
+
+    def _refresh_start_button_style(self) -> None:
+        self.start_button.style().unpolish(self.start_button)
+        self.start_button.style().polish(self.start_button)
 
     def start_analysis(self) -> None:
         if self._thread is not None or not self.validate_inputs(True):
             return
         source = Path(self.source_edit.text().strip())
         output = Path(self.output_edit.text().strip())
+        analysis_days = self.period_days_spin.value()
         output.mkdir(parents=True, exist_ok=True)
         self.log_view.clear()
         self.result_frame.hide()
         self.progress_bar.setRange(0, 1)
         self.progress_bar.setValue(0)
-        self.status_label.setText("Поиск архивов…")
+        self.status_label.setText(
+            f"Поиск архивов… Период анализа: {analysis_days} дней"
+        )
         self._set_running(True)
 
         thread = QThread(self)
-        worker = AnalysisWorker(source, output)
+        worker = AnalysisWorker(source, output, analysis_days)
         worker.moveToThread(thread)
         thread.started.connect(worker.run)
         worker.progress.connect(self._on_progress)
@@ -411,4 +441,3 @@ class MainWindow(QMainWindow):
                 event.ignore()
                 return
         event.accept()
-

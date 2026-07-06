@@ -92,7 +92,7 @@ def _sample_run(rendered_message: str) -> AuditRun:
         source_root=Path(r"C:\Users\impal\Downloads\АУДИТ 2"),
         created_at=created,
         nodes=(first, second),
-        metadata={"archive_count": 2, "evtx_count": 6},
+        metadata={"archive_count": 2, "evtx_count": 6, "analysis_days": 30},
     )
 
 

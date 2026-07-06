@@ -7,7 +7,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from threading import Event
 
-from .analyzer import analyze_events
+from .analyzer import ANALYSIS_DAYS, analyze_events
 from .archive import extract_event_logs
 from .discovery import discover_archives, group_archives_by_node
 from .legacy_evt import scan_evt
@@ -69,12 +69,14 @@ class AuditCoordinator:
         event_reader: EventReader | None = None,
         record_scanner: RecordScanner = scan_evtx,
         legacy_record_scanner: RecordScanner = scan_evt,
+        analysis_days: int = ANALYSIS_DAYS,
     ) -> None:
         self.progress = progress or (lambda update: None)
         self.message = message or (lambda diagnostic: None)
         self.event_reader = event_reader
         self.record_scanner = record_scanner
         self.legacy_record_scanner = legacy_record_scanner
+        self.analysis_days = max(1, int(analysis_days))
 
     @staticmethod
     def _check_cancelled(cancelled: Event) -> None:
@@ -262,6 +264,7 @@ class AuditCoordinator:
                 latest_timestamp=latest_timestamp,
                 records_read=records_read,
                 archives_seen=archives_seen,
+                analysis_days=self.analysis_days,
             ),
             extracted_log_count,
         )
@@ -310,6 +313,7 @@ class AuditCoordinator:
             metadata={
                 "archive_count": len(sources),
                 "evtx_count": evtx_count,
+                "analysis_days": self.analysis_days,
             },
         )
         output_dir.mkdir(parents=True, exist_ok=True)

@@ -260,8 +260,10 @@
       byId("report-meta").textContent =
         `Создан: ${fmt(report.created_at)} · Источник: ${report.source_root} · ` +
         `${report.summary.nodes} узлов · ${report.summary.archives} архивов · ${report.summary.evtx} журналов`;
+      const analysisDays = Number(report.metadata?.analysis_days || 0);
+      const analysisLabel = analysisDays > 0 ? ` · ОКНО: ${analysisDays} дней` : "";
       byId("report-period").textContent =
-        `ПЕРИОД: ${fmt(report.period_start)} — ${fmt(report.period_end)}`;
+        `ПЕРИОД: ${fmt(report.period_start)} — ${fmt(report.period_end)}` + analysisLabel;
 
       const metricData = [
         ["critical-text", report.summary.critical, "КРИТИЧЕСКИЕ"],

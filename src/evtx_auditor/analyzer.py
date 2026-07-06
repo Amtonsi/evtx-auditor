@@ -192,6 +192,7 @@ def analyze_events(
     latest_timestamp: datetime | None = None,
     records_read: int | None = None,
     archives_seen: tuple[str, ...] = (),
+    analysis_days: int = ANALYSIS_DAYS,
 ) -> NodeResult:
     records = list(events)
     valid_timestamps = [
@@ -234,7 +235,7 @@ def analyze_events(
             archives_seen=archives_seen,
         )
 
-    cutoff = latest - timedelta(days=ANALYSIS_DAYS)
+    cutoff = latest - timedelta(days=max(1, int(analysis_days)))
     in_period = [
         event
         for event in records

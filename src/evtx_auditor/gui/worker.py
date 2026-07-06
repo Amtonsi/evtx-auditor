@@ -19,10 +19,13 @@ class AnalysisWorker(QObject):
     cancelled = Signal()
     failed = Signal(str)
 
-    def __init__(self, source: Path, output: Path) -> None:
+    def __init__(
+        self, source: Path, output: Path, analysis_days: int
+    ) -> None:
         super().__init__()
         self.source = source
         self.output = output
+        self.analysis_days = analysis_days
         self.cancel_event = Event()
 
     @Slot()
@@ -30,6 +33,7 @@ class AnalysisWorker(QObject):
         coordinator = AuditCoordinator(
             progress=self.progress.emit,
             message=self.message.emit,
+            analysis_days=self.analysis_days,
         )
         try:
             result = coordinator.run(
@@ -45,4 +49,3 @@ class AnalysisWorker(QObject):
     @Slot()
     def cancel(self) -> None:
         self.cancel_event.set()
-

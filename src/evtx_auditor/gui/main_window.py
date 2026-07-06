@@ -53,6 +53,10 @@ QLabel.fieldLabel {
     font-size: 11px;
     font-weight: 700;
 }
+QLabel.helperText {
+    color: #64748b;
+    font-size: 11px;
+}
 QLineEdit, QSpinBox, QPlainTextEdit {
     background: white;
     border: 1px solid #cbd5e1;
@@ -168,25 +172,42 @@ class MainWindow(QMainWindow):
         source_layout = QGridLayout()
         source_layout.setContentsMargins(16, 14, 16, 14)
         source_layout.setHorizontalSpacing(9)
+        source_layout.setVerticalSpacing(5)
         source_label = QLabel("ПАПКА С АРХИВАМИ")
         source_label.setProperty("class", "fieldLabel")
         self.source_edit = QLineEdit(str(default_source))
+        self.source_edit.setPlaceholderText(
+            "Укажите папку с ZIP-архивами журналов Windows"
+        )
         self.source_edit.setClearButtonEnabled(True)
         self.source_button = QPushButton("Выбрать")
         self.source_button.clicked.connect(self.choose_source)
+        self.source_hint = QLabel(
+            "Укажите папку, где лежат подпапки узлов и ZIP-архивы."
+        )
+        self.source_hint.setProperty("class", "helperText")
         source_layout.addWidget(source_label, 0, 0, 1, 2)
         source_layout.addWidget(self.source_edit, 1, 0)
         source_layout.addWidget(self.source_button, 1, 1)
+        source_layout.addWidget(self.source_hint, 2, 0, 1, 2)
 
         output_label = QLabel("ПАПКА ДЛЯ ОТЧЁТА")
         output_label.setProperty("class", "fieldLabel")
         self.output_edit = QLineEdit(str(default_output))
+        self.output_edit.setPlaceholderText(
+            "Укажите папку для сохранения HTML-отчёта"
+        )
         self.output_edit.setClearButtonEnabled(True)
         self.output_button = QPushButton("Выбрать")
         self.output_button.clicked.connect(self.choose_output)
-        source_layout.addWidget(output_label, 2, 0, 1, 2)
-        source_layout.addWidget(self.output_edit, 3, 0)
-        source_layout.addWidget(self.output_button, 3, 1)
+        self.output_hint = QLabel(
+            "Укажите папку, куда будет автоматически создан HTML-отчёт."
+        )
+        self.output_hint.setProperty("class", "helperText")
+        source_layout.addWidget(output_label, 3, 0, 1, 2)
+        source_layout.addWidget(self.output_edit, 4, 0)
+        source_layout.addWidget(self.output_button, 4, 1)
+        source_layout.addWidget(self.output_hint, 5, 0, 1, 2)
 
         period_label = QLabel("ПЕРИОД АНАЛИЗА, ДНЕЙ")
         period_label.setProperty("class", "fieldLabel")
@@ -195,8 +216,14 @@ class MainWindow(QMainWindow):
         self.period_days_spin.setValue(30)
         self.period_days_spin.setSingleStep(1)
         self.period_days_spin.setSuffix(" дней")
-        source_layout.addWidget(period_label, 4, 0, 1, 2)
-        source_layout.addWidget(self.period_days_spin, 5, 0, 1, 2)
+        self.period_days_spin.setToolTip("Введите период анализа в днях")
+        self.period_hint = QLabel(
+            "Введите период анализа в днях. Например: 30."
+        )
+        self.period_hint.setProperty("class", "helperText")
+        source_layout.addWidget(period_label, 6, 0, 1, 2)
+        source_layout.addWidget(self.period_days_spin, 7, 0, 1, 2)
+        source_layout.addWidget(self.period_hint, 8, 0, 1, 2)
         source_layout.setColumnStretch(0, 1)
         page.addWidget(_card(source_layout))
 

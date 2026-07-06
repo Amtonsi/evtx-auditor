@@ -25,6 +25,29 @@ def test_window_has_required_controls(tmp_path: Path):
     window.close()
 
 
+def test_input_fields_show_visible_guidance(tmp_path: Path):
+    app = QApplication.instance() or QApplication([])
+    source = tmp_path / "source"
+    source.mkdir()
+    window = MainWindow(
+        default_source=source, default_output=tmp_path / "out"
+    )
+
+    assert (
+        window.source_edit.placeholderText()
+        == "Укажите папку с ZIP-архивами журналов Windows"
+    )
+    assert "Укажите папку" in window.source_hint.text()
+    assert (
+        window.output_edit.placeholderText()
+        == "Укажите папку для сохранения HTML-отчёта"
+    )
+    assert "Укажите папку" in window.output_hint.text()
+    assert window.period_days_spin.toolTip() == "Введите период анализа в днях"
+    assert "Введите период анализа" in window.period_hint.text()
+    window.close()
+
+
 def test_running_state_changes_start_button_and_locks_period(tmp_path: Path):
     app = QApplication.instance() or QApplication([])
     source = tmp_path / "source"

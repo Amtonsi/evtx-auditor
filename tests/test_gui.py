@@ -48,6 +48,7 @@ def test_input_fields_show_visible_guidance(tmp_path: Path):
     assert window.period_days_spin.toolTip() == "Введите период анализа в днях"
     assert window.period_days_spin.suffix() == ""
     assert "Введите период анализа" in window.period_hint.text()
+    assert window.period_hint.contentsMargins().top() == 6
     assert (
         window.period_days_spin.buttonSymbols()
         is QAbstractSpinBox.ButtonSymbols.NoButtons

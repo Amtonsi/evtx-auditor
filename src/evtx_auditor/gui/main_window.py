@@ -249,6 +249,7 @@ class MainWindow(QMainWindow):
             "Введите период анализа в днях. Например: 30."
         )
         self.period_hint.setProperty("class", "helperText")
+        self.period_hint.setContentsMargins(0, 6, 0, 0)
         source_layout.addWidget(period_label, 6, 0, 1, 2)
         source_layout.addWidget(self.period_days_spin, 7, 0, 1, 2)
         source_layout.addWidget(self.period_hint, 8, 0, 1, 2)

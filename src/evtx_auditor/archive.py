@@ -2,7 +2,7 @@ from pathlib import Path, PurePosixPath
 from shutil import copyfileobj
 from zipfile import ZipFile, ZipInfo
 
-MAX_ENTRY_SIZE = 512 * 1024 * 1024
+MAX_ENTRY_SIZE = 1024 * 1024 * 1024
 MAX_ARCHIVE_SIZE = 2 * 1024 * 1024 * 1024
 MAX_ENTRIES = 1000
 SUPPORTED_LOG_SUFFIXES = (".evtx", ".evt")
@@ -51,7 +51,9 @@ def extract_event_logs(archive_path: Path, destination: Path) -> list[Path]:
             )
         for info in selected:
             if info.file_size > MAX_ENTRY_SIZE:
-                raise ArchiveLimitError(f"EVTX слишком велик: {info.filename}")
+                raise ArchiveLimitError(
+                    f"Журнал событий слишком велик: {info.filename}"
+                )
             relative = _validated_relative_path(info)
             target = (destination_root / relative).resolve()
             if not target.is_relative_to(destination_root):

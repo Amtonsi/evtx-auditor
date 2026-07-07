@@ -307,18 +307,33 @@ def scan_evt(
             candidate_predicate,
             on_issue,
         )
-    except Exception as error:
-        if on_issue is not None:
+    except Exception as api_error:
+        records_found = False
+        try:
+            for scanned in scan_evt_records(
+                _read_raw_evt_records(path),
+                context,
+                candidate_predicate,
+                on_issue,
+            ):
+                records_found = True
+                yield scanned
+        except Exception as fallback_error:
+            if on_issue is not None:
+                on_issue(
+                    ParseIssue(
+                        0,
+                        "Windows API не открыл EVT; прямое чтение тоже "
+                        f"завершилось ошибкой: {fallback_error}; "
+                        f"ошибка Windows API: {api_error}",
+                    )
+                )
+            raise
+        if not records_found and on_issue is not None:
             on_issue(
                 ParseIssue(
                     0,
-                    "Windows API не открыл EVT; используется прямое чтение "
-                    f"записей: {error}",
+                    "Windows API не открыл EVT; прямое чтение не нашло "
+                    f"записей: {api_error}",
                 )
             )
-        yield from scan_evt_records(
-            _read_raw_evt_records(path),
-            context,
-            candidate_predicate,
-            on_issue,
-        )

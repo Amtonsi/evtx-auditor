@@ -132,3 +132,29 @@ def test_scan_evt_falls_back_to_raw_records_when_windows_api_rejects_file(
     assert scanned[0].event.provider == "Security"
     assert scanned[0].event.computer == "XP-HOST"
     assert scanned[0].event.data["String_1"] == "operator"
+
+
+def test_scan_evt_does_not_report_api_rejection_when_raw_fallback_reads_records(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    evt_path = tmp_path / "Security.evt"
+    evt_path.write_bytes(b"bad header area" + _raw_evt_record())
+    issues = []
+
+    def broken_backup_reader(path: Path):
+        raise OSError(1500, "OpenBackupEventLogW", "legacy API rejected file")
+
+    monkeypatch.setattr(legacy_evt, "_read_backup_records", broken_backup_reader)
+
+    scanned = list(
+        scan_evt(
+            evt_path,
+            EventContext("XP-HOST", "xp.zip", "Security.evt"),
+            lambda event_id, level: event_id == 529,
+            issues.append,
+        )
+    )
+
+    assert len(scanned) == 1
+    assert scanned[0].event is not None
+    assert issues == []
